@@ -1,0 +1,22 @@
+services:
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: nlp_postgres
+    environment:
+      POSTGRES_USER: nlp_user
+      POSTGRES_PASSWORD: nlp_password
+      POSTGRES_DB: nlp_db
+    ports:
+      - "5439:5432" # <-- DIŞ PORTU 5439 YAPTIK! (İçerisi 5432 kalacak)
+    volumes:
+      - pgdata_final:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: nlp_rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+volumes:
+  pgdata_final:

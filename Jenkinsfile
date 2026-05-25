@@ -18,7 +18,7 @@ pipeline {
                     // Kök dizindeki docker-compose.yml dosyasını okur, 
                     // kod değişikliklerine göre backend'i baştan derler (--build)
                     // ve tüm servisleri arka planda (-d) ayağa kaldırır.
-                    sh "docker-compose up --build -d"
+                    sh "docker compose up --build -d"
                 }
             }
         }

@@ -9,17 +9,28 @@ services:
       POSTGRES_PASSWORD: nlp_password
       POSTGRES_DB: nlp_db
     ports:
-      - "5439:5432"
+      - "5439:5432" # Dışarıdan (DBeaver vb.) bağlanırken 5439, içerideki konteynerler için 5432 portu geçerlidir.
     volumes:
       - pgdata_final:/var/lib/postgresql/data
+    # Sağlık kontrolü: PostgreSQL tamamen hazır olmadan backend'in başlamasını engeller.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nlp_user -d nlp_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: always
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: nlp_rabbitmq
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "5672:5672"   # RabbitMQ mesajlaşma portu
+      - "15672:15672" # RabbitMQ Yönetim Paneli (Arayüz) portu
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q check_running"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: always
 
   turkishapp-backend:
@@ -28,15 +39,18 @@ services:
       dockerfile: Dockerfile
     container_name: turkishapp-backend
     ports:
-      - "5000:8080"
+      - "5000:8080" # Tarayıcıdan ve Swagger'dan erişim portumuz (http://192.168.65.128:5000)
     environment:
       - ASPNETCORE_URLS=http://+:8080
       - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres-db;Port=5432;Database=nlp_db;Username=nlp_user;Password=nlp_password;
+      # İki alt çizgi kuralı (__) kullanılarak Program.cs'teki PostgresConnection yapılandırması ezilir:
+      - ConnectionStrings__PostgresConnection=Host=postgres-db;Port=5432;Database=nlp_db;Username=nlp_user;Password=nlp_password;
       - RabbitMQ__Host=rabbitmq
     depends_on:
-      - postgres-db
-      - rabbitmq
+      postgres-db:
+        condition: service_healthy # Veritabanı tamamen hazır ve sağlıklı olana kadar bekle
+      rabbitmq:
+        condition: service_healthy   # RabbitMQ tamamen hazır ve sağlıklı olana kadar bekle
     restart: always
 
 volumes:

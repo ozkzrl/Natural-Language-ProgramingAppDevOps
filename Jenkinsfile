@@ -1,44 +1,34 @@
-version: '3.8'
+pipeline {
+    agent any
 
-services:
-  postgres-db:
-    image: postgres:15-alpine
-    container_name: nlp_postgres
-    environment:
-      POSTGRES_USER: nlp_user
-      POSTGRES_PASSWORD: nlp_password
-      POSTGRES_DB: nlp_db
-    ports:
-      - "5439:5432"
-    volumes:
-      - pgdata_final:/var/lib/postgresql/data
-    restart: always
+    stages {
+        stage('1. Kodu Çek (Checkout)') {
+            steps {
+                // GitHub'daki en güncel kodları Rocky Linux iş alanına indirir
+                checkout scm
+            }
+        }
 
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    container_name: nlp_rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    restart: always
+        stage('2. Altyapıyı Docker Compose ile Dağıt (Deploy)') {
+            steps {
+                script {
+                    echo 'Docker Compose mimarisi tetikleniyor...'
+                    echo 'Eski konteynerler temizleniyor, imajlar yeniden derleniyor...'
+                    
+                    // --build: C# kodlarındaki değişiklikleri algılayıp imajı günceller
+                    // -d: Konteynerleri arka planda (detached) çalıştırır
+                    sh "docker compose up --build -d"
+                }
+            }
+        }
+    }
 
-  turkishapp-backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: turkishapp-backend
-    ports:
-      - "5000:8080"  # Dışarıdan 5000 portuyla API'nize erişeceksiniz
-    environment:
-      - ASPNETCORE_URLS=http://+:8080
-      - ASPNETCORE_ENVIRONMENT=Development
-      # Docker ağı içindeki servis isimleriyle bağlantı stringleri:
-      - ConnectionStrings__DefaultConnection=Host=postgres-db;Port=5432;Database=nlp_db;Username=nlp_user;Password=nlp_password;
-      - RabbitMQ__Host=rabbitmq
-    depends_on:
-      - postgres-db
-      - rabbitmq
-    restart: always
-
-volumes:
-  pgdata_final:
+    post {
+        success {
+            echo 'Mükemmel! Tüm mimari Docker Compose ile başarıyla ayağa kaldırıldı.'
+        }
+        failure {
+            echo 'Eyvah! Bir şeyler ters gitti. Lütfen Console Output ekranını inceleyin.'
+        }
+    }
+}

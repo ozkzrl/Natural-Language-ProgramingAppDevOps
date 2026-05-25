@@ -2,19 +2,19 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build-env
 WORKDIR /app
 
-# Tüm projeyi (src dahil) imajın içine kopyalıyoruz
+# Tüm projeyi (src klasörünü ve altındaki iki projeyi de) içeri alıyoruz
 COPY . ./
 
-# Proje dosyaları src klasöründe olduğu için o dizine odaklanarak restore ve publish yapıyoruz
-RUN dotnet restore src/*.csproj
-RUN dotnet publish src/*.csproj -c Release -o out
+# Doğrudan API projesinin yolunu göstererek restore ve publish yapıyoruz
+RUN dotnet restore src/NlpPipeline.Api/NlpPipeline.Api.csproj
+RUN dotnet publish src/NlpPipeline.Api/NlpPipeline.Api.csproj -c Release -o out
 
 # 2. Aşama: Uygulamayı Çalıştırma (Hafif Runtime İmajı)
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=build-env /app/out .
 
-# Konteyner içi çalışma portu
 EXPOSE 8080
 
-ENTRYPOINT ["dotnet", "Natural-Language-ProgramingAppDevOps.dll"]
+# Gerçek DLL adımızı tam olarak tanımlıyoruz
+ENTRYPOINT ["dotnet", "NlpPipeline.Api.dll"]

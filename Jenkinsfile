@@ -1,35 +1,44 @@
-pipeline {
-    agent any
+version: '3.8'
 
-    stages {
-        stage('1. Kodu Çek (Checkout)') {
-            steps {
-                // GitHub'dan en güncel kodları Rocky Linux'a indirir
-                checkout scm
-            }
-        }
+services:
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: nlp_postgres
+    environment:
+      POSTGRES_USER: nlp_user
+      POSTGRES_PASSWORD: nlp_password
+      POSTGRES_DB: nlp_db
+    ports:
+      - "5439:5432"
+    volumes:
+      - pgdata_final:/var/lib/postgresql/data
+    restart: always
 
-        stage('2. Altyapıyı Docker Compose ile Dağıt (Deploy)') {
-            steps {
-                script {
-                    echo 'Docker Compose mimarisi tetikleniyor...'
-                    echo 'Eski konteynerler indiriliyor, imajlar yeniden derleniyor...'
-                    
-                    // Kök dizindeki docker-compose.yml dosyasını okur, 
-                    // kod değişikliklerine göre backend'i baştan derler (--build)
-                    // ve tüm servisleri arka planda (-d) ayağa kaldırır.
-                    sh "docker compose up --build -d"
-                }
-            }
-        }
-    }
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: nlp_rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: always
 
-    post {
-        success {
-            echo 'Mükemmel! Docker Compose hattı başarıyla tamamladı. Tüm servisler ayakta!'
-        }
-        failure {
-            echo 'Eyvah! Bir şeyler ters gitti. Lütfen Console Output ekranını inceleyin.'
-        }
-    }
-}
+  turkishapp-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: turkishapp-backend
+    ports:
+      - "5000:8080"  # Dışarıdan 5000 portuyla API'nize erişeceksiniz
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_ENVIRONMENT=Development
+      # Docker ağı içindeki servis isimleriyle bağlantı stringleri:
+      - ConnectionStrings__DefaultConnection=Host=postgres-db;Port=5432;Database=nlp_db;Username=nlp_user;Password=nlp_password;
+      - RabbitMQ__Host=rabbitmq
+    depends_on:
+      - postgres-db
+      - rabbitmq
+    restart: always
+
+volumes:
+  pgdata_final:

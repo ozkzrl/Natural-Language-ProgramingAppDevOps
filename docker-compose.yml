@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: nlp_password
       POSTGRES_DB: nlp_db
     ports:
-      - "5439:5432" # Dışarıdan (DBeaver/DataGrip ile) erişirken 5439 portu kullanılır
+      - "5439:5432"
     volumes:
       - pgdata_final:/var/lib/postgresql/data
     restart: always
@@ -18,8 +18,8 @@ services:
     image: rabbitmq:3-management-alpine
     container_name: nlp_rabbitmq
     ports:
-      - "5672:5672"   # RabbitMQ mesaj iletim portu
-      - "15672:15672" # RabbitMQ Yönetim Arayüzü portu
+      - "5672:5672"
+      - "15672:15672"
     restart: always
 
   turkishapp-backend:
@@ -28,11 +28,10 @@ services:
       dockerfile: Dockerfile
     container_name: turkishapp-backend
     ports:
-      - "5000:8080" # Tarayıcıdan http://192.168.65.128:5000 ile erişim sağlar
+      - "5000:8080"
     environment:
       - ASPNETCORE_URLS=http://+:8080
       - ASPNETCORE_ENVIRONMENT=Development
-      # Docker ağı içinde localhost yerine doğrudan servis isimleri (postgres-db ve rabbitmq) yazılır:
       - ConnectionStrings__DefaultConnection=Host=postgres-db;Port=5432;Database=nlp_db;Username=nlp_user;Password=nlp_password;
       - RabbitMQ__Host=rabbitmq
     depends_on:
